@@ -116,7 +116,6 @@ export default function Home() {
     }
 
     try {
-      // Robust path extraction from public URL
       try {
         const url = new URL(downloadUrl);
         const pathParts = url.pathname.split('/');
@@ -140,7 +139,7 @@ export default function Home() {
 
   if (loading || fetching) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh" sx={{ bgcolor: '#F8F9FA' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', bgcolor: '#F8F9FA' }}>
         <CircularProgress sx={{ color: '#1A73E8' }} />
       </Box>
     );
@@ -162,8 +161,8 @@ export default function Home() {
     <Box sx={{ bgcolor: '#F8F9FA', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Top Header */}
       <Box sx={{ bgcolor: '#FFFFFF', borderBottom: '1px solid #E0E0E0', px: 3, py: 1.5, position: 'sticky', top: 0, zIndex: 1000 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Box display="flex" alignItems="center" gap={2}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Box sx={{ bgcolor: '#1A73E8', color: '#FFFFFF', p: 1, borderRadius: '8px', display: 'flex' }}>
               <SchoolIcon />
             </Box>
@@ -173,8 +172,8 @@ export default function Home() {
             </Box>
           </Box>
 
-          <Box display="flex" alignItems="center" gap={3}>
-            <Box display="flex" alignItems="center" gap={1.5} sx={{ display: { xs: 'none', md: 'flex' } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, display: { xs: 'none', md: 'flex' } }}>
               <AccountCircleIcon sx={{ color: '#5F6368' }} />
               <Box>
                 <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1 }}>{user.email}</Typography>
@@ -234,7 +233,7 @@ export default function Home() {
         {/* Main Content */}
         <Box sx={{ flexGrow: 1, p: { xs: 3, md: 4 } }}>
           <Container maxWidth="xl" disableGutters>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={4} flexWrap="wrap" gap={2}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
               <Box sx={{ minWidth: { xs: '100%', md: '350px' } }}>
                 <TextField
                   fullWidth
@@ -295,7 +294,7 @@ export default function Home() {
                       boxShadow: 'none', position: 'relative'
                     }}>
                       <CardContent sx={{ p: 3, flexGrow: 1 }}>
-                        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                           <Chip
                             label={item.subject}
                             size="small"
