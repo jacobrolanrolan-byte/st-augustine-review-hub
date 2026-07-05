@@ -153,17 +153,12 @@ export default function Home() {
     <Box sx={{ bgcolor: '#F8F9FA', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       
       {/* Top Application Header */}
-      <Box sx={{ bgcolor: '#FFFFFF', borderBottom: '1px solid #E0E0E0', px: 3, py: 1.5, position: 'sticky', top: 0, zIndex: 1000 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Box display="flex" alignItems="center" gap={2}>
-            <Box sx={{ bgcolor: '#1A73E8', color: '#FFFFFF', p: 1, borderRadius: '8px', display: 'flex' }}>
-              <SchoolIcon />
-            </Box>
-            <Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, lineHeight: 1.2 }}>St. Augustine of Hippo</Typography>
-              <Typography variant="body2" sx={{ color: '#5F6368', fontSize: '0.8rem' }}>Academic Review Portal</Typography>
-            </Box>
-          </Box>
+<Box sx={{ bgcolor: '#FFFFFF', borderBottom: '1px solid #E0E0E0', px: 3, py: 1.5 }}>
+  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Box sx={{ bgcolor: '#1A73E8', color: '#FFFFFF', p: 1, borderRadius: '8px', display: 'flex' }}>
+        <SchoolIcon />
+      </Box>
 
           <Box display="flex" alignItems="center" gap={3}>
             <Box display="flex" alignItems="center" gap={1.5} sx={{ display: { xs: 'none', md: 'flex' } }}>
