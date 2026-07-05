@@ -42,13 +42,16 @@ export default function Login() {
         <CardContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
             <Typography 
-             variant="h4" 
-             gutterBottom 
-             sx={{ fontWeight: 'bold', color: 'primary.main' }}
->
-  Sign In
-</Typography>
-            <Typography variant="body2" color="text.secondary">
+              variant="h4" 
+              gutterBottom 
+              sx={{ fontWeight: 'bold', color: 'primary.main' }}
+            >
+              Sign In
+            </Typography>
+            <Typography 
+              variant="body2" 
+              sx={{ color: 'text.secondary' }}
+            >
               Use your credentials for St. Augustine Review Hub
             </Typography>
           </Box>
