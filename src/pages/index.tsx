@@ -4,7 +4,7 @@ import {
   CircularProgress, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   Select, MenuItem, FormControl, InputLabel, Divider, List, ListItem,
   ListItemButton, ListItemIcon, ListItemText, InputAdornment, IconButton,
-  Tabs, Tab, Paper, Tooltip, Badge
+  Tabs, Tab, Paper, Tooltip, Badge, Snackbar, Alert
 } from '@mui/material';
 import { useAuth } from '@/context/AuthContext';
 import { useThemeContext } from '@/pages/_app';
@@ -60,6 +60,7 @@ export default function Home() {
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [fetching, setFetching] = useState(true);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [notes, setNotes] = useState('');
@@ -72,6 +73,7 @@ export default function Home() {
   const [openComments, setOpenComments] = useState<string | null>(null);
   const [openFlashcard, setOpenFlashcard] = useState<string | null>(null);
   const [openAnnouncement, setOpenAnnouncement] = useState(false);
+  const [openCreateFlashcard, setOpenCreateFlashcard] = useState(false);
 
   const [subject, setSubject] = useState('');
   const [title, setTitle] = useState('');
@@ -90,19 +92,20 @@ export default function Home() {
 
   const isAdmin = profile?.role === 'admin' || user?.email?.includes('admin') || user?.email?.includes('officer');
 
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => setToast({ msg, type });
+
   const fetchAll = useCallback(async () => {
     if (!user) return;
     setFetching(true);
 
-    const [{ data: mats }, { data: favs }, { data: note }, { data: coms }, { data: fcs }, { data: plans }, { data: anns }] = await Promise.all([
-      supabase.from('materials').select('*').order('created_at', { ascending: false }),
-      supabase.from('favorites').select('material_id').eq('user_id', user.id),
-      supabase.from('notes').select('*').eq('user_id', user.id).single(),
-      supabase.from('comments').select('*').order('created_at', { ascending: true }),
-      supabase.from('flashcards').select('*').order('created_at', { ascending: false }),
-      supabase.from('study_planner').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
-      supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(5),
-    ]);
+    // Fetch independently so one failure doesn't break others
+    const { data: mats } = await supabase.from('materials').select('*').order('created_at', { ascending: false });
+    const { data: favs } = await supabase.from('favorites').select('material_id').eq('user_id', user.id);
+    const { data: note } = await supabase.from('notes').select('*').eq('user_id', user.id).maybeSingle();
+    const { data: coms } = await supabase.from('comments').select('*').order('created_at', { ascending: true });
+    const { data: fcs } = await supabase.from('flashcards').select('*').order('created_at', { ascending: false });
+    const { data: plans } = await supabase.from('study_planner').select('*').eq('user_id', user.id).order('created_at', { ascending: true });
+    const { data: anns } = await supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(5);
 
     if (mats) setMaterials(mats);
     if (favs) setFavorites(new Set(favs.map((f: any) => f.material_id)));
@@ -120,91 +123,135 @@ export default function Home() {
     else if (user) fetchAll();
   }, [user, loading, router, fetchAll]);
 
+  // Auto-save notes with error handling
   useEffect(() => {
     if (!user) return;
     const timer = setTimeout(async () => {
-      const { data: existing } = await supabase.from('notes').select('id').eq('user_id', user.id).single();
-      if (existing) {
-        await supabase.from('notes').update({ content: notes, updated_at: new Date().toISOString() }).eq('id', existing.id);
-      } else {
-        await supabase.from('notes').insert({ user_id: user.id, content: notes });
+      try {
+        const { data: existing, error: findErr } = await supabase.from('notes').select('id').eq('user_id', user.id).maybeSingle();
+        if (findErr) throw findErr;
+
+        if (existing) {
+          const { error } = await supabase.from('notes').update({ content: notes, updated_at: new Date().toISOString() }).eq('id', existing.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('notes').insert({ user_id: user.id, content: notes });
+          if (error) throw error;
+        }
+      } catch (err: any) {
+        console.error('Notes save error:', err.message);
       }
     }, 1500);
     return () => clearTimeout(timer);
   }, [notes, user]);
 
   const toggleFavorite = async (materialId: string) => {
-    const next = new Set(favorites);
-    if (next.has(materialId)) {
-      next.delete(materialId);
-      await supabase.from('favorites').delete().eq('material_id', materialId).eq('user_id', user?.id);
-    } else {
-      next.add(materialId);
-      await supabase.from('favorites').insert({ user_id: user?.id, material_id: materialId });
+    try {
+      const next = new Set(favorites);
+      if (next.has(materialId)) {
+        next.delete(materialId);
+        await supabase.from('favorites').delete().eq('material_id', materialId).eq('user_id', user?.id);
+      } else {
+        next.add(materialId);
+        await supabase.from('favorites').insert({ user_id: user?.id, material_id: materialId });
+      }
+      setFavorites(next);
+    } catch (err: any) {
+      showToast(err.message, 'error');
     }
-    setFavorites(next);
   };
 
   const postComment = async () => {
     if (!openComments || !commentText.trim() || !user) return;
-    await supabase.from('comments').insert({
-      material_id: openComments,
-      user_id: user.id,
-      user_email: user.email,
-      content: commentText.trim(),
-    });
-    setCommentText('');
-    const { data } = await supabase.from('comments').select('*').order('created_at', { ascending: true });
-    if (data) setComments(data);
+    try {
+      const { error } = await supabase.from('comments').insert({
+        material_id: openComments,
+        user_id: user.id,
+        user_email: user.email,
+        content: commentText.trim(),
+      });
+      if (error) throw error;
+      setCommentText('');
+      const { data } = await supabase.from('comments').select('*').order('created_at', { ascending: true });
+      if (data) setComments(data);
+    } catch (err: any) {
+      showToast(err.message, 'error');
+    }
   };
 
   const addFlashcard = async () => {
-    if (!openFlashcard || !fcFront.trim() || !fcBack.trim()) return;
-    await supabase.from('flashcards').insert({
-      material_id: openFlashcard,
-      front: fcFront.trim(),
-      back: fcBack.trim(),
-      created_by: user?.email,
-    });
-    setFcFront(''); setFcBack(''); setOpenFlashcard(null);
-    const { data } = await supabase.from('flashcards').select('*').order('created_at', { ascending: false });
-    if (data) setFlashcards(data);
+    if (!fcFront.trim() || !fcBack.trim()) return;
+    try {
+      const { error } = await supabase.from('flashcards').insert({
+        material_id: openFlashcard,
+        front: fcFront.trim(),
+        back: fcBack.trim(),
+        created_by: user?.email,
+      });
+      if (error) throw error;
+      setFcFront(''); setFcBack(''); setOpenCreateFlashcard(false); setOpenFlashcard(null);
+      const { data } = await supabase.from('flashcards').select('*').order('created_at', { ascending: false });
+      if (data) setFlashcards(data);
+      showToast('Flashcard created!');
+    } catch (err: any) {
+      showToast(err.message, 'error');
+    }
   };
 
   const addPlanner = async () => {
     if (!plannerSubject.trim() || !user) return;
-    await supabase.from('study_planner').insert({
-      user_id: user.id,
-      day: plannerDay,
-      subject: plannerSubject.trim(),
-    });
-    setPlannerSubject('');
-    const { data } = await supabase.from('study_planner').select('*').eq('user_id', user.id).order('created_at', { ascending: true });
-    if (data) setPlanner(data);
+    try {
+      const { error } = await supabase.from('study_planner').insert({
+        user_id: user.id,
+        day: plannerDay,
+        subject: plannerSubject.trim(),
+      });
+      if (error) throw error;
+      setPlannerSubject('');
+      const { data } = await supabase.from('study_planner').select('*').eq('user_id', user.id).order('created_at', { ascending: true });
+      if (data) setPlanner(data);
+      showToast('Task added to planner!');
+    } catch (err: any) {
+      showToast(err.message, 'error');
+    }
   };
 
   const togglePlanner = async (id: string, done: boolean) => {
-    await supabase.from('study_planner').update({ completed: !done }).eq('id', id);
-    const { data } = await supabase.from('study_planner').select('*').eq('user_id', user?.id).order('created_at', { ascending: true });
-    if (data) setPlanner(data);
+    try {
+      await supabase.from('study_planner').update({ completed: !done }).eq('id', id);
+      const { data } = await supabase.from('study_planner').select('*').eq('user_id', user?.id).order('created_at', { ascending: true });
+      if (data) setPlanner(data);
+    } catch (err: any) {
+      showToast(err.message, 'error');
+    }
   };
 
   const deletePlanner = async (id: string) => {
-    await supabase.from('study_planner').delete().eq('id', id);
-    const { data } = await supabase.from('study_planner').select('*').eq('user_id', user?.id).order('created_at', { ascending: true });
-    if (data) setPlanner(data);
+    try {
+      await supabase.from('study_planner').delete().eq('id', id);
+      const { data } = await supabase.from('study_planner').select('*').eq('user_id', user?.id).order('created_at', { ascending: true });
+      if (data) setPlanner(data);
+    } catch (err: any) {
+      showToast(err.message, 'error');
+    }
   };
 
   const postAnnouncement = async () => {
     if (!annTitle.trim() || !annContent.trim()) return;
-    await supabase.from('announcements').insert({
-      title: annTitle.trim(),
-      content: annContent.trim(),
-      created_by: user?.email,
-    });
-    setAnnTitle(''); setAnnContent(''); setOpenAnnouncement(false);
-    const { data } = await supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(5);
-    if (data) setAnnouncements(data);
+    try {
+      const { error } = await supabase.from('announcements').insert({
+        title: annTitle.trim(),
+        content: annContent.trim(),
+        created_by: user?.email,
+      });
+      if (error) throw error;
+      setAnnTitle(''); setAnnContent(''); setOpenAnnouncement(false);
+      const { data } = await supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(5);
+      if (data) setAnnouncements(data);
+      showToast('Announcement posted!');
+    } catch (err: any) {
+      showToast(err.message, 'error');
+    }
   };
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
@@ -224,8 +271,12 @@ export default function Home() {
       if (dErr) throw dErr;
       setOpenUpload(false); setSubject(''); setTitle(''); setDescription(''); setSelectedFile(null);
       fetchAll();
-    } catch (error: any) { alert(error.message || "Upload failed"); }
-    finally { setUploading(false); }
+      showToast('Document uploaded!');
+    } catch (error: any) {
+      showToast(error.message || "Upload failed", 'error');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleDeleteMaterial = async (id: string, downloadUrl: string) => {
@@ -264,6 +315,12 @@ export default function Home() {
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Toast notifications */}
+      <Snackbar open={!!toast} autoHideDuration={3000} onClose={() => setToast(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert severity={toast?.type || 'success'} onClose={() => setToast(null)}>{toast?.msg}</Alert>
+      </Snackbar>
+
+      {/* Header */}
       <Box sx={{ bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider', px: 3, py: 1.5, position: 'sticky', top: 0, zIndex: 1000 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -294,6 +351,7 @@ export default function Home() {
         </Box>
       </Box>
 
+      {/* Announcements */}
       {(announcements.length > 0 || isAdmin) && (
         <Box sx={{ px: { xs: 3, md: 4 }, pt: 3 }}>
           {announcements.map((ann) => (
@@ -314,6 +372,7 @@ export default function Home() {
       )}
 
       <Box sx={{ display: 'flex', flexGrow: 1 }}>
+        {/* Sidebar */}
         <Box sx={{ width: '280px', borderRight: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', display: { xs: 'none', lg: 'block' }, p: 2 }}>
           <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, px: 2, display: 'block', mb: 1, letterSpacing: '0.8px', textTransform: 'uppercase' }}>
             Course Directories
@@ -336,6 +395,7 @@ export default function Home() {
           </List>
         </Box>
 
+        {/* Main Content */}
         <Box sx={{ flexGrow: 1, p: { xs: 3, md: 4 } }}>
           <Container maxWidth="xl" disableGutters>
             <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
@@ -346,6 +406,7 @@ export default function Home() {
               <Tab icon={<EventNoteIcon fontSize="small" />} label="Planner" iconPosition="start" />
             </Tabs>
 
+            {/* MATERIALS TAB */}
             <TabPanel value={tab} index={0}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
                 <Box sx={{ minWidth: { xs: '100%', md: '350px' } }}>
@@ -427,9 +488,10 @@ export default function Home() {
               )}
             </TabPanel>
 
+            {/* NOTES TAB */}
             <TabPanel value={tab} index={1}>
               <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>My Notes</Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>Auto-saves while you type.</Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>Auto-saves while you type. {notes.length} characters.</Typography>
               <TextField
                 fullWidth
                 multiline
@@ -441,6 +503,7 @@ export default function Home() {
               />
             </TabPanel>
 
+            {/* FAVORITES TAB */}
             <TabPanel value={tab} index={2}>
               <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>Favorite Reviewers</Typography>
               {favMaterials.length === 0 ? (
@@ -472,11 +535,19 @@ export default function Home() {
               )}
             </TabPanel>
 
+            {/* FLASHCARDS TAB */}
             <TabPanel value={tab} index={3}>
-              <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>Flashcards</Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>Flashcards</Typography>
+                {isAdmin && (
+                  <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenCreateFlashcard(true)} sx={{ bgcolor: '#1A73E8', textTransform: 'none' }}>
+                    Create Flashcard
+                  </Button>
+                )}
+              </Box>
               {flashcards.length === 0 ? (
                 <Paper sx={{ p: 6, textAlign: 'center', border: '1px dashed', borderColor: 'divider' }}>
-                  <Typography color="text.secondary">No flashcards yet. Admins can create them from the Materials tab.</Typography>
+                  <Typography color="text.secondary">No flashcards yet.</Typography>
                 </Paper>
               ) : (
                 <Grid container spacing={3}>
@@ -498,6 +569,133 @@ export default function Home() {
               )}
             </TabPanel>
 
+            {/* PLANNER TAB */}
             <TabPanel value={tab} index={4}>
               <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>Study Planner</Typography>
-              <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap'
+              <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+                <FormControl sx={{ minWidth: 140 }}>
+                  <InputLabel>Day</InputLabel>
+                  <Select value={plannerDay} onChange={(e) => setPlannerDay(e.target.value)} label="Day">
+                    {DAYS.map((d) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
+                  </Select>
+                </FormControl>
+                <TextField placeholder="Subject / Task" value={plannerSubject} onChange={(e) => setPlannerSubject(e.target.value)} sx={{ minWidth: 200 }} />
+                <Button variant="contained" startIcon={<AddIcon />} onClick={addPlanner} sx={{ bgcolor: '#1A73E8', textTransform: 'none' }}>Add</Button>
+              </Box>
+
+              <Grid container spacing={3}>
+                {DAYS.map((day) => {
+                  const dayItems = planner.filter((p) => p.day === day);
+                  return (
+                    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={day}>
+                      <Paper sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: '8px' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{day}</Typography>
+                        {dayItems.length === 0 ? (
+                          <Typography variant="body2" sx={{ color: 'text.secondary' }}>No tasks</Typography>
+                        ) : (
+                          <List dense>
+                            {dayItems.map((item) => (
+                              <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
+                                <ListItemButton onClick={() => togglePlanner(item.id, item.completed)} sx={{ borderRadius: '6px' }}>
+                                  <ListItemIcon>
+                                    {item.completed ? <CheckCircleIcon color="success" /> : <RadioButtonUncheckedIcon color="disabled" />}
+                                  </ListItemIcon>
+                                  <ListItemText primary={item.subject} sx={{ textDecoration: item.completed ? 'line-through' : 'none', color: item.completed ? 'text.secondary' : 'text.primary' }} />
+                                  <IconButton edge="end" size="small" onClick={(e) => { e.stopPropagation(); deletePlanner(item.id); }}><DeleteIcon fontSize="small" color="error" /></IconButton>
+                                </ListItemButton>
+                              </ListItem>
+                            ))}
+                          </List>
+                        )}
+                      </Paper>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            </TabPanel>
+          </Container>
+        </Box>
+      </Box>
+
+      {/* Upload Dialog */}
+      <Dialog open={openUpload} onClose={() => setOpenUpload(false)} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 600 }}>Upload Class Document</DialogTitle>
+        <form onSubmit={handleUploadSubmit}>
+          <DialogContent dividers sx={{ py: 3 }}>
+            <FormControl fullWidth margin="dense" required>
+              <InputLabel>Subject Category</InputLabel>
+              <Select value={subject} onChange={(e) => setSubject(e.target.value)} label="Subject Category">
+                {SUBJECT_LIST.map((subj) => <MenuItem key={subj} value={subj}>{subj}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <TextField fullWidth label="Document Name / Title" variant="outlined" margin="dense" required value={title} onChange={(e) => setTitle(e.target.value)} sx={{ mt: 2.5 }} />
+            <TextField fullWidth label="Description Notes" variant="outlined" margin="dense" multiline rows={2} value={description} onChange={(e) => setDescription(e.target.value)} sx={{ mt: 2.5 }} />
+            <Box sx={{ mt: 3, p: 3, border: '2px dashed', borderColor: 'divider', borderRadius: '4px', textAlign: 'center' }}>
+              <Button variant="outlined" component="label" startIcon={<AttachFileIcon />} sx={{ textTransform: 'none' }}>
+                Select PDF / Document
+                <input type="file" hidden accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+              </Button>
+              <Typography variant="body2" sx={{ mt: 1.5, color: selectedFile ? 'success.main' : 'text.secondary', fontWeight: selectedFile ? 600 : 400 }}>
+                {selectedFile ? `Selected: ${selectedFile.name}` : "No file attached"}
+              </Typography>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ p: 2.5 }}>
+            <Button onClick={() => setOpenUpload(false)} disabled={uploading}>Cancel</Button>
+            <Button type="submit" variant="contained" disabled={uploading} sx={{ bgcolor: '#1A73E8', textTransform: 'none' }}>
+              {uploading ? "Uploading..." : "Publish"}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      {/* Comments Dialog */}
+      <Dialog open={!!openComments} onClose={() => setOpenComments(null)} fullWidth maxWidth="sm">
+        <DialogTitle>Comments</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ maxHeight: 400, overflow: 'auto', mb: 2 }}>
+            {openComments && materialComments(openComments).length === 0 && (
+              <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', py: 4 }}>No comments yet. Start the discussion!</Typography>
+            )}
+            {openComments && materialComments(openComments).map((c) => (
+              <Box key={c.id} sx={{ mb: 2, p: 2, bgcolor: 'action.hover', borderRadius: '8px' }}>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: 'primary.main' }}>{c.user_email?.split('@')[0]}</Typography>
+                <Typography variant="body2" sx={{ mt: 0.5 }}>{c.content}</Typography>
+              </Box>
+            ))}
+          </Box>
+          <TextField fullWidth placeholder="Write a comment..." value={commentText} onChange={(e) => setCommentText(e.target.value)} slotProps={{ input: { endAdornment: <Button onClick={postComment} size="small" variant="contained" sx={{ ml: 1 }}>Post</Button> } }} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenComments(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Create Flashcard Dialog */}
+      <Dialog open={openCreateFlashcard} onClose={() => setOpenCreateFlashcard(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Create Flashcard</DialogTitle>
+        <DialogContent dividers>
+          <TextField fullWidth label="Front (Question)" multiline rows={2} value={fcFront} onChange={(e) => setFcFront(e.target.value)} sx={{ mb: 2 }} />
+          <TextField fullWidth label="Back (Answer)" multiline rows={2} value={fcBack} onChange={(e) => setFcBack(e.target.value)} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenCreateFlashcard(false)}>Cancel</Button>
+          <Button variant="contained" onClick={addFlashcard} disabled={!fcFront.trim() || !fcBack.trim()} sx={{ bgcolor: '#1A73E8', textTransform: 'none' }}>Save Flashcard</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Announcement Dialog */}
+      <Dialog open={openAnnouncement} onClose={() => setOpenAnnouncement(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Post Announcement</DialogTitle>
+        <DialogContent dividers>
+          <TextField fullWidth label="Title" value={annTitle} onChange={(e) => setAnnTitle(e.target.value)} sx={{ mb: 2 }} />
+          <TextField fullWidth label="Content" multiline rows={3} value={annContent} onChange={(e) => setAnnContent(e.target.value)} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenAnnouncement(false)}>Cancel</Button>
+          <Button variant="contained" onClick={postAnnouncement} disabled={!annTitle.trim() || !annContent.trim()} sx={{ bgcolor: '#1A73E8', textTransform: 'none' }}>Post</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}
