@@ -298,7 +298,7 @@ export default function Home() {
       </Box>
 
       {/* Announcements */}
-      {announcements.length > 0 && (
+      {(announcements.length > 0 || isAdmin) && (
         <Box sx={{ px: { xs: 3, md: 4 }, pt: 3 }}>
           {announcements.map((ann) => (
             <Paper key={ann.id} sx={{ p: 2, mb: 2, bgcolor: 'warning.light', color: 'warning.contrastText', borderRadius: '8px' }}>
