@@ -4,7 +4,7 @@ import {
   CircularProgress, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   Select, MenuItem, FormControl, InputLabel, Divider, List, ListItem,
   ListItemButton, ListItemIcon, ListItemText, InputAdornment, IconButton,
-  Tabs, Tab, Paper, Checkbox, Switch, Tooltip, Badge, Collapse
+  Tabs, Tab, Paper, Tooltip, Badge
 } from '@mui/material';
 import { useAuth } from '@/context/AuthContext';
 import { useThemeContext } from '@/pages/_app';
@@ -120,7 +120,6 @@ export default function Home() {
     else if (user) fetchAll();
   }, [user, loading, router, fetchAll]);
 
-  // Auto-save notes
   useEffect(() => {
     if (!user) return;
     const timer = setTimeout(async () => {
@@ -265,7 +264,6 @@ export default function Home() {
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
       <Box sx={{ bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider', px: 3, py: 1.5, position: 'sticky', top: 0, zIndex: 1000 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -277,7 +275,6 @@ export default function Home() {
               <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>Academic Review Portal</Typography>
             </Box>
           </Box>
-
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Tooltip title={darkMode ? 'Light Mode' : 'Dark Mode'}>
               <IconButton onClick={toggleDarkMode} color="inherit">
@@ -297,10 +294,9 @@ export default function Home() {
         </Box>
       </Box>
 
-      {/* Announcements */}
       {(announcements.length > 0 || isAdmin) && (
-  <Box sx={{ px: { xs: 3, md: 4 }, pt: 3 }}>
-    {announcements.map((ann) => (
+        <Box sx={{ px: { xs: 3, md: 4 }, pt: 3 }}>
+          {announcements.map((ann) => (
             <Paper key={ann.id} sx={{ p: 2, mb: 2, bgcolor: 'warning.light', color: 'warning.contrastText', borderRadius: '8px' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                 <CampaignIcon fontSize="small" />
@@ -318,7 +314,6 @@ export default function Home() {
       )}
 
       <Box sx={{ display: 'flex', flexGrow: 1 }}>
-        {/* Sidebar */}
         <Box sx={{ width: '280px', borderRight: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', display: { xs: 'none', lg: 'block' }, p: 2 }}>
           <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, px: 2, display: 'block', mb: 1, letterSpacing: '0.8px', textTransform: 'uppercase' }}>
             Course Directories
@@ -341,7 +336,6 @@ export default function Home() {
           </List>
         </Box>
 
-        {/* Main Content */}
         <Box sx={{ flexGrow: 1, p: { xs: 3, md: 4 } }}>
           <Container maxWidth="xl" disableGutters>
             <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
@@ -352,7 +346,6 @@ export default function Home() {
               <Tab icon={<EventNoteIcon fontSize="small" />} label="Planner" iconPosition="start" />
             </Tabs>
 
-            {/* MATERIALS TAB */}
             <TabPanel value={tab} index={0}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
                 <Box sx={{ minWidth: { xs: '100%', md: '350px' } }}>
@@ -434,7 +427,6 @@ export default function Home() {
               )}
             </TabPanel>
 
-            {/* NOTES TAB */}
             <TabPanel value={tab} index={1}>
               <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>My Notes</Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>Auto-saves while you type.</Typography>
@@ -449,7 +441,6 @@ export default function Home() {
               />
             </TabPanel>
 
-            {/* FAVORITES TAB */}
             <TabPanel value={tab} index={2}>
               <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>Favorite Reviewers</Typography>
               {favMaterials.length === 0 ? (
@@ -481,7 +472,6 @@ export default function Home() {
               )}
             </TabPanel>
 
-            {/* FLASHCARDS TAB */}
             <TabPanel value={tab} index={3}>
               <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>Flashcards</Typography>
               {flashcards.length === 0 ? (
@@ -508,136 +498,6 @@ export default function Home() {
               )}
             </TabPanel>
 
-            {/* PLANNER TAB */}
             <TabPanel value={tab} index={4}>
               <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>Study Planner</Typography>
-              <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-                <FormControl sx={{ minWidth: 140 }}>
-                  <InputLabel>Day</InputLabel>
-                  <Select value={plannerDay} onChange={(e) => setPlannerDay(e.target.value)} label="Day">
-                    {DAYS.map((d) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
-                  </Select>
-                </FormControl>
-                <TextField placeholder="Subject / Task" value={plannerSubject} onChange={(e) => setPlannerSubject(e.target.value)} sx={{ minWidth: 200 }} />
-                <Button variant="contained" startIcon={<AddIcon />} onClick={addPlanner} sx={{ bgcolor: '#1A73E8', textTransform: 'none' }}>Add</Button>
-              </Box>
-
-              <Grid container spacing={3}>
-                {DAYS.map((day) => {
-                  const dayItems = planner.filter((p) => p.day === day);
-                  return (
-                    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={day}>
-                      <Paper sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: '8px' }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{day}</Typography>
-                        {dayItems.length === 0 ? (
-                          <Typography variant="body2" sx={{ color: 'text.secondary' }}>No tasks</Typography>
-                        ) : (
-                          <List dense>
-                            {dayItems.map((item) => (
-                              <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
-                                <ListItemButton onClick={() => togglePlanner(item.id, item.completed)} sx={{ borderRadius: '6px' }}>
-                                  <ListItemIcon>
-                                    {item.completed ? <CheckCircleIcon color="success" /> : <RadioButtonUncheckedIcon color="disabled" />}
-                                  </ListItemIcon>
-                                  <ListItemText primary={item.subject} sx={{ textDecoration: item.completed ? 'line-through' : 'none', color: item.completed ? 'text.secondary' : 'text.primary' }} />
-                                  <IconButton edge="end" size="small" onClick={(e) => { e.stopPropagation(); deletePlanner(item.id); }}><DeleteIcon fontSize="small" color="error" /></IconButton>
-                                </ListItemButton>
-                              </ListItem>
-                            ))}
-                          </List>
-                        )}
-                      </Paper>
-                    </Grid>
-                  );
-                })}
-              </Grid>
-            </TabPanel>
-          </Container>
-        </Box>
-      </Box>
-
-      {/* Upload Dialog */}
-      <Dialog open={openUpload} onClose={() => setOpenUpload(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ fontWeight: 600 }}>Upload Class Document</DialogTitle>
-        <form onSubmit={handleUploadSubmit}>
-          <DialogContent dividers sx={{ py: 3 }}>
-            <FormControl fullWidth margin="dense" required>
-              <InputLabel>Subject Category</InputLabel>
-              <Select value={subject} onChange={(e) => setSubject(e.target.value)} label="Subject Category">
-                {SUBJECT_LIST.map((subj) => <MenuItem key={subj} value={subj}>{subj}</MenuItem>)}
-              </Select>
-            </FormControl>
-            <TextField fullWidth label="Document Name / Title" variant="outlined" margin="dense" required value={title} onChange={(e) => setTitle(e.target.value)} sx={{ mt: 2.5 }} />
-            <TextField fullWidth label="Description Notes" variant="outlined" margin="dense" multiline rows={2} value={description} onChange={(e) => setDescription(e.target.value)} sx={{ mt: 2.5 }} />
-            <Box sx={{ mt: 3, p: 3, border: '2px dashed', borderColor: 'divider', borderRadius: '4px', textAlign: 'center' }}>
-              <Button variant="outlined" component="label" startIcon={<AttachFileIcon />} sx={{ textTransform: 'none' }}>
-                Select PDF / Document
-                <input type="file" hidden accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-              </Button>
-              <Typography variant="body2" sx={{ mt: 1.5, color: selectedFile ? 'success.main' : 'text.secondary', fontWeight: selectedFile ? 600 : 400 }}>
-                {selectedFile ? `Selected: ${selectedFile.name}` : "No file attached"}
-              </Typography>
-            </Box>
-          </DialogContent>
-          <DialogActions sx={{ p: 2.5 }}>
-            <Button onClick={() => setOpenUpload(false)} disabled={uploading}>Cancel</Button>
-            <Button type="submit" variant="contained" disabled={uploading} sx={{ bgcolor: '#1A73E8', textTransform: 'none' }}>
-              {uploading ? "Uploading..." : "Publish"}
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
-
-      {/* Comments Dialog */}
-      <Dialog open={!!openComments} onClose={() => setOpenComments(null)} fullWidth maxWidth="sm">
-        <DialogTitle>Comments</DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ maxHeight: 400, overflow: 'auto', mb: 2 }}>
-            {openComments && materialComments(openComments).length === 0 && (
-              <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', py: 4 }}>No comments yet. Start the discussion!</Typography>
-            )}
-            {openComments && materialComments(openComments).map((c) => (
-              <Box key={c.id} sx={{ mb: 2, p: 2, bgcolor: 'action.hover', borderRadius: '8px' }}>
-                <Typography variant="caption" sx={{ fontWeight: 600, color: 'primary.main' }}>{c.user_email?.split('@')[0]}</Typography>
-                <Typography variant="body2" sx={{ mt: 0.5 }}>{c.content}</Typography>
-              </Box>
-            ))}
-          </Box>
-          <TextField fullWidth placeholder="Write a comment..." value={commentText} onChange={(e) => setCommentText(e.target.value)} slotProps={{ input: { endAdornment: <Button onClick={postComment} size="small" variant="contained" sx={{ ml: 1 }}>Post</Button> } }} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenComments(null)}>Close</Button>
-          {isAdmin && openComments && (
-            <Button onClick={() => setOpenFlashcard(openComments)} sx={{ color: 'success.main' }}>Create Flashcard</Button>
-          )}
-        </DialogActions>
-      </Dialog>
-
-      {/* Create Flashcard Dialog */}
-      <Dialog open={!!openFlashcard} onClose={() => setOpenFlashcard(null)} fullWidth maxWidth="sm">
-        <DialogTitle>Create Flashcard</DialogTitle>
-        <DialogContent dividers>
-          <TextField fullWidth label="Front (Question)" multiline rows={2} value={fcFront} onChange={(e) => setFcFront(e.target.value)} sx={{ mb: 2 }} />
-          <TextField fullWidth label="Back (Answer)" multiline rows={2} value={fcBack} onChange={(e) => setFcBack(e.target.value)} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenFlashcard(null)}>Cancel</Button>
-          <Button variant="contained" onClick={addFlashcard} disabled={!fcFront.trim() || !fcBack.trim()} sx={{ bgcolor: '#1A73E8', textTransform: 'none' }}>Save Flashcard</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Announcement Dialog */}
-      <Dialog open={openAnnouncement} onClose={() => setOpenAnnouncement(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Post Announcement</DialogTitle>
-        <DialogContent dividers>
-          <TextField fullWidth label="Title" value={annTitle} onChange={(e) => setAnnTitle(e.target.value)} sx={{ mb: 2 }} />
-          <TextField fullWidth label="Content" multiline rows={3} value={annContent} onChange={(e) => setAnnContent(e.target.value)} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenAnnouncement(false)}>Cancel</Button>
-          <Button variant="contained" onClick={postAnnouncement} disabled={!annTitle.trim() || !annContent.trim()} sx={{ bgcolor: '#1A73E8', textTransform: 'none' }}>Post</Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
-  );
-}
+              <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap'
