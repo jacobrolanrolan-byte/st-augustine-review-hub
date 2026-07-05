@@ -122,12 +122,20 @@ export default function Home() {
   };
 
   if (loading || fetching) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh" sx={{ bgcolor: '#F8F9FA' }}>
-        <CircularProgress sx={{ color: '#1A73E8' }} />
-      </Box>
-    );
-  }
+  return (
+    <Box 
+      sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh',
+        bgcolor: '#F8F9FA' 
+      }}
+    >
+      <CircularProgress sx={{ color: '#1A73E8' }} />
+    </Box>
+  );
+}
 
   if (!user) return null;
 
