@@ -4,7 +4,7 @@ import {
   CircularProgress, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   Select, MenuItem, FormControl, InputLabel, Divider, List, ListItem,
   ListItemButton, ListItemIcon, ListItemText, InputAdornment, IconButton,
-  Tabs, Tab, Paper, Tooltip, Badge, Snackbar, Alert
+  Tabs, Tab, Paper, Tooltip, Badge, Snackbar, Alert, LinearProgress
 } from '@mui/material';
 import { useAuth } from '@/context/AuthContext';
 import { useThemeContext } from '@/pages/_app';
@@ -32,6 +32,9 @@ import EventNoteIcon from '@mui/icons-material/EventNote';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import NotesIcon from '@mui/icons-material/Notes';
 import StyleIcon from '@mui/icons-material/Style';
+import QuizIcon from '@mui/icons-material/Quiz';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
 
 const SUBJECT_LIST = [
   "Finite Mathematics", "Theology", "Effective Komunikasyon",
@@ -71,9 +74,8 @@ export default function Home() {
 
   const [openUpload, setOpenUpload] = useState(false);
   const [openComments, setOpenComments] = useState<string | null>(null);
-  const [openFlashcard, setOpenFlashcard] = useState<string | null>(null);
-  const [openAnnouncement, setOpenAnnouncement] = useState(false);
   const [openCreateFlashcard, setOpenCreateFlashcard] = useState(false);
+  const [openAnnouncement, setOpenAnnouncement] = useState(false);
 
   const [subject, setSubject] = useState('');
   const [title, setTitle] = useState('');
@@ -84,11 +86,22 @@ export default function Home() {
   const [commentText, setCommentText] = useState('');
   const [fcFront, setFcFront] = useState('');
   const [fcBack, setFcBack] = useState('');
+  const [fcSubject, setFcSubject] = useState('General Mathematics');
   const [flipped, setFlipped] = useState<string | null>(null);
   const [annTitle, setAnnTitle] = useState('');
   const [annContent, setAnnContent] = useState('');
   const [plannerDay, setPlannerDay] = useState('Monday');
   const [plannerSubject, setPlannerSubject] = useState('');
+
+  // Quiz state
+  const [quizMode, setQuizMode] = useState(false);
+  const [quizSubject, setQuizSubject] = useState('General Mathematics');
+  const [quizIndex, setQuizIndex] = useState(0);
+  const [quizAnswer, setQuizAnswer] = useState('');
+  const [quizResult, setQuizResult] = useState<'correct' | 'wrong' | null>(null);
+  const [quizScore, setQuizScore] = useState(0);
+  const [quizTotal, setQuizTotal] = useState(0);
+  const [quizDone, setQuizDone] = useState(false);
 
   const isAdmin = profile?.role === 'admin' || user?.email?.includes('admin') || user?.email?.includes('officer');
 
@@ -98,7 +111,6 @@ export default function Home() {
     if (!user) return;
     setFetching(true);
 
-    // Fetch independently so one failure doesn't break others
     const { data: mats } = await supabase.from('materials').select('*').order('created_at', { ascending: false });
     const { data: favs } = await supabase.from('favorites').select('material_id').eq('user_id', user.id);
     const { data: note } = await supabase.from('notes').select('*').eq('user_id', user.id).maybeSingle();
@@ -123,7 +135,6 @@ export default function Home() {
     else if (user) fetchAll();
   }, [user, loading, router, fetchAll]);
 
-  // Auto-save notes with error handling
   useEffect(() => {
     if (!user) return;
     const timer = setTimeout(async () => {
@@ -180,19 +191,31 @@ export default function Home() {
   };
 
   const addFlashcard = async () => {
-    if (!fcFront.trim() || !fcBack.trim()) return;
+    if (!fcFront.trim() || !fcBack.trim() || !fcSubject) return;
     try {
       const { error } = await supabase.from('flashcards').insert({
-        material_id: openFlashcard,
+        subject: fcSubject,
         front: fcFront.trim(),
         back: fcBack.trim(),
         created_by: user?.email,
       });
       if (error) throw error;
-      setFcFront(''); setFcBack(''); setOpenCreateFlashcard(false); setOpenFlashcard(null);
+      setFcFront(''); setFcBack(''); setFcSubject('General Mathematics'); setOpenCreateFlashcard(false);
       const { data } = await supabase.from('flashcards').select('*').order('created_at', { ascending: false });
       if (data) setFlashcards(data);
       showToast('Flashcard created!');
+    } catch (err: any) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const deleteFlashcard = async (id: string) => {
+    if (!window.confirm('Delete this flashcard?')) return;
+    try {
+      await supabase.from('flashcards').delete().eq('id', id);
+      const { data } = await supabase.from('flashcards').select('*').order('created_at', { ascending: false });
+      if (data) setFlashcards(data);
+      showToast('Flashcard deleted');
     } catch (err: any) {
       showToast(err.message, 'error');
     }
@@ -254,6 +277,18 @@ export default function Home() {
     }
   };
 
+  const deleteAnnouncement = async (id: string) => {
+    if (!window.confirm('Delete this announcement?')) return;
+    try {
+      await supabase.from('announcements').delete().eq('id', id);
+      const { data } = await supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(5);
+      if (data) setAnnouncements(data);
+      showToast('Announcement deleted');
+    } catch (err: any) {
+      showToast(err.message, 'error');
+    }
+  };
+
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject || !title || !selectedFile) { alert("Fill all fields"); return; }
@@ -293,6 +328,44 @@ export default function Home() {
     fetchAll();
   };
 
+  // Quiz functions
+  const startQuiz = () => {
+    const subjectCards = flashcards.filter((f) => f.subject === quizSubject);
+    if (subjectCards.length === 0) {
+      showToast('No flashcards for this subject yet!', 'error');
+      return;
+    }
+    setQuizMode(true);
+    setQuizIndex(0);
+    setQuizScore(0);
+    setQuizTotal(0);
+    setQuizDone(false);
+    setQuizAnswer('');
+    setQuizResult(null);
+  };
+
+  const submitQuizAnswer = () => {
+    const subjectCards = flashcards.filter((f) => f.subject === quizSubject);
+    const current = subjectCards[quizIndex];
+    if (!current) return;
+
+    const isCorrect = quizAnswer.trim().toLowerCase() === current.back.trim().toLowerCase();
+    setQuizResult(isCorrect ? 'correct' : 'wrong');
+    setQuizTotal((t) => t + 1);
+    if (isCorrect) setQuizScore((s) => s + 1);
+  };
+
+  const nextQuizCard = () => {
+    const subjectCards = flashcards.filter((f) => f.subject === quizSubject);
+    setQuizAnswer('');
+    setQuizResult(null);
+    if (quizIndex + 1 >= subjectCards.length) {
+      setQuizDone(true);
+    } else {
+      setQuizIndex((i) => i + 1);
+    }
+  };
+
   const filteredMaterials = materials.filter((item) => {
     const matchesSubject = selectedSubject ? item.subject === selectedSubject : true;
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -302,7 +375,7 @@ export default function Home() {
 
   const favMaterials = materials.filter((m) => favorites.has(m.id));
   const materialComments = (id: string) => comments.filter((c) => c.material_id === id);
-  const materialFlashcards = (id: string) => flashcards.filter((f) => f.material_id === id);
+  const subjectFlashcards = (subj: string) => flashcards.filter((f) => f.subject === subj);
 
   if (loading || fetching) {
     return (
@@ -315,12 +388,10 @@ export default function Home() {
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Toast notifications */}
       <Snackbar open={!!toast} autoHideDuration={3000} onClose={() => setToast(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
         <Alert severity={toast?.type || 'success'} onClose={() => setToast(null)}>{toast?.msg}</Alert>
       </Snackbar>
 
-      {/* Header */}
       <Box sx={{ bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider', px: 3, py: 1.5, position: 'sticky', top: 0, zIndex: 1000 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -351,16 +422,24 @@ export default function Home() {
         </Box>
       </Box>
 
-      {/* Announcements */}
       {(announcements.length > 0 || isAdmin) && (
         <Box sx={{ px: { xs: 3, md: 4 }, pt: 3 }}>
           {announcements.map((ann) => (
             <Paper key={ann.id} sx={{ p: 2, mb: 2, bgcolor: 'warning.light', color: 'warning.contrastText', borderRadius: '8px' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                <CampaignIcon fontSize="small" />
-                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{ann.title}</Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Box sx={{ flexGrow: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                    <CampaignIcon fontSize="small" />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{ann.title}</Typography>
+                  </Box>
+                  <Typography variant="body2">{ann.content}</Typography>
+                </Box>
+                {isAdmin && (
+                  <IconButton size="small" onClick={() => deleteAnnouncement(ann.id)} sx={{ color: 'warning.contrastText', ml: 1 }}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                )}
               </Box>
-              <Typography variant="body2">{ann.content}</Typography>
             </Paper>
           ))}
           {isAdmin && (
@@ -372,7 +451,6 @@ export default function Home() {
       )}
 
       <Box sx={{ display: 'flex', flexGrow: 1 }}>
-        {/* Sidebar */}
         <Box sx={{ width: '280px', borderRight: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', display: { xs: 'none', lg: 'block' }, p: 2 }}>
           <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, px: 2, display: 'block', mb: 1, letterSpacing: '0.8px', textTransform: 'uppercase' }}>
             Course Directories
@@ -395,7 +473,6 @@ export default function Home() {
           </List>
         </Box>
 
-        {/* Main Content */}
         <Box sx={{ flexGrow: 1, p: { xs: 3, md: 4 } }}>
           <Container maxWidth="xl" disableGutters>
             <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
@@ -403,6 +480,7 @@ export default function Home() {
               <Tab icon={<NotesIcon fontSize="small" />} label="My Notes" iconPosition="start" />
               <Tab icon={<BookmarkIcon fontSize="small" />} label="Favorites" iconPosition="start" />
               <Tab icon={<StyleIcon fontSize="small" />} label="Flashcards" iconPosition="start" />
+              <Tab icon={<QuizIcon fontSize="small" />} label="Quiz" iconPosition="start" />
               <Tab icon={<EventNoteIcon fontSize="small" />} label="Planner" iconPosition="start" />
             </Tabs>
 
@@ -545,32 +623,140 @@ export default function Home() {
                   </Button>
                 )}
               </Box>
-              {flashcards.length === 0 ? (
+
+              {SUBJECT_LIST.map((subj) => {
+                const cards = subjectFlashcards(subj);
+                if (cards.length === 0) return null;
+                return (
+                  <Box key={subj} sx={{ mb: 4 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: 'primary.main' }}>{subj}</Typography>
+                    <Grid container spacing={3}>
+                      {cards.map((fc) => (
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={fc.id}>
+                          <Card onClick={() => setFlipped(flipped === fc.id ? null : fc.id)} sx={{ cursor: 'pointer', minHeight: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid', borderColor: 'divider', borderRadius: '8px', boxShadow: 'none', bgcolor: flipped === fc.id ? 'success.light' : 'background.paper' }}>
+                            <CardContent sx={{ textAlign: 'center' }}>
+                              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                {flipped === fc.id ? fc.back : fc.front}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: 'text.secondary', mt: 2, display: 'block' }}>
+                                {flipped === fc.id ? 'Click to flip back' : 'Click to reveal answer'}
+                              </Typography>
+                              {isAdmin && (
+                                <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); deleteFlashcard(fc.id); }} sx={{ mt: 1 }}>
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              )}
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Box>
+                );
+              })}
+
+              {flashcards.length === 0 && (
                 <Paper sx={{ p: 6, textAlign: 'center', border: '1px dashed', borderColor: 'divider' }}>
-                  <Typography color="text.secondary">No flashcards yet.</Typography>
+                  <Typography color="text.secondary">No flashcards yet. Admins can create them.</Typography>
+                </Paper>
+              )}
+            </TabPanel>
+
+            {/* QUIZ TAB */}
+            <TabPanel value={tab} index={4}>
+              <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>Identification Quiz</Typography>
+              
+              {!quizMode ? (
+                <Paper sx={{ p: 4, textAlign: 'center', border: '1px dashed', borderColor: 'divider' }}>
+                  <FormControl sx={{ minWidth: 250, mb: 3 }}>
+                    <InputLabel>Select Subject</InputLabel>
+                    <Select value={quizSubject} onChange={(e) => setQuizSubject(e.target.value)} label="Select Subject">
+                      {SUBJECT_LIST.map((subj) => <MenuItem key={subj} value={subj}>{subj}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+                    {subjectFlashcards(quizSubject).length} flashcards available for this subject
+                  </Typography>
+                  <Button variant="contained" startIcon={<QuizIcon />} onClick={startQuiz} sx={{ bgcolor: '#1A73E8', textTransform: 'none' }}>
+                    Start Quiz
+                  </Button>
+                </Paper>
+              ) : quizDone ? (
+                <Paper sx={{ p: 6, textAlign: 'center' }}>
+                  <Typography variant="h4" sx={{ fontWeight: 700, mb: 2 }}>Quiz Complete!</Typography>
+                  <Typography variant="h5" sx={{ color: quizScore / quizTotal >= 0.7 ? 'success.main' : quizScore / quizTotal >= 0.4 ? 'warning.main' : 'error.main', mb: 2 }}>
+                    {quizScore} / {quizTotal} Correct
+                  </Typography>
+                  <LinearProgress variant="determinate" value={(quizScore / quizTotal) * 100} sx={{ mb: 3, height: 10, borderRadius: 5 }} />
+                  <Button variant="contained" onClick={() => setQuizMode(false)} sx={{ bgcolor: '#1A73E8', textTransform: 'none' }}>
+                    Take Another Quiz
+                  </Button>
                 </Paper>
               ) : (
-                <Grid container spacing={3}>
-                  {flashcards.map((fc) => (
-                    <Grid size={{ xs: 12, sm: 6, md: 4 }} key={fc.id}>
-                      <Card onClick={() => setFlipped(flipped === fc.id ? null : fc.id)} sx={{ cursor: 'pointer', minHeight: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid', borderColor: 'divider', borderRadius: '8px', boxShadow: 'none', bgcolor: flipped === fc.id ? 'success.light' : 'background.paper' }}>
-                        <CardContent sx={{ textAlign: 'center' }}>
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            {flipped === fc.id ? fc.back : fc.front}
+                <Paper sx={{ p: 4, maxWidth: 600, mx: 'auto' }}>
+                  {(() => {
+                    const subjectCards = flashcards.filter((f) => f.subject === quizSubject);
+                    const current = subjectCards[quizIndex];
+                    if (!current) return null;
+                    return (
+                      <Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                            Card {quizIndex + 1} of {subjectCards.length}
                           </Typography>
-                          <Typography variant="caption" sx={{ color: 'text.secondary', mt: 2, display: 'block' }}>
-                            {flipped === fc.id ? 'Click to flip back' : 'Click to reveal answer'}
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                            Score: {quizScore}/{quizTotal}
                           </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
+                        </Box>
+                        <LinearProgress variant="determinate" value={((quizIndex) / subjectCards.length) * 100} sx={{ mb: 3 }} />
+                        
+                        <Typography variant="h5" sx={{ fontWeight: 600, textAlign: 'center', mb: 3, minHeight: 80 }}>
+                          {current.front}
+                        </Typography>
+
+                        {quizResult === null ? (
+                          <Box>
+                            <TextField
+                              fullWidth
+                              placeholder="Type your answer..."
+                              value={quizAnswer}
+                              onChange={(e) => setQuizAnswer(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && submitQuizAnswer()}
+                              sx={{ mb: 2 }}
+                            />
+                            <Button fullWidth variant="contained" onClick={submitQuizAnswer} disabled={!quizAnswer.trim()} sx={{ bgcolor: '#1A73E8', textTransform: 'none' }}>
+                              Submit Answer
+                            </Button>
+                          </Box>
+                        ) : (
+                          <Box>
+                            <Box sx={{ p: 2, borderRadius: '8px', bgcolor: quizResult === 'correct' ? 'success.light' : 'error.light', textAlign: 'center', mb: 2 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                                {quizResult === 'correct' ? <CheckIcon color="success" /> : <CloseIcon color="error" />}
+                                <Typography variant="h6" sx={{ fontWeight: 600, color: quizResult === 'correct' ? 'success.dark' : 'error.dark' }}>
+                                  {quizResult === 'correct' ? 'Correct!' : 'Wrong!'}
+                                </Typography>
+                              </Box>
+                              {quizResult === 'wrong' && (
+                                <Typography variant="body2" sx={{ mt: 1, color: 'error.dark' }}>
+                                  Correct answer: <strong>{current.back}</strong>
+                                </Typography>
+                              )}
+                            </Box>
+                            <Button fullWidth variant="contained" onClick={nextQuizCard} sx={{ bgcolor: '#1A73E8', textTransform: 'none' }}>
+                              {quizIndex + 1 >= subjectCards.length ? 'See Results' : 'Next Card'}
+                            </Button>
+                          </Box>
+                        )}
+                      </Box>
+                    );
+                  })()}
+                </Paper>
               )}
             </TabPanel>
 
             {/* PLANNER TAB */}
-            <TabPanel value={tab} index={4}>
+            <TabPanel value={tab} index={5}>
               <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>Study Planner</Typography>
               <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
                 <FormControl sx={{ minWidth: 140 }}>
@@ -617,7 +803,6 @@ export default function Home() {
         </Box>
       </Box>
 
-      {/* Upload Dialog */}
       <Dialog open={openUpload} onClose={() => setOpenUpload(false)} fullWidth maxWidth="sm">
         <DialogTitle sx={{ fontWeight: 600 }}>Upload Class Document</DialogTitle>
         <form onSubmit={handleUploadSubmit}>
@@ -649,7 +834,6 @@ export default function Home() {
         </form>
       </Dialog>
 
-      {/* Comments Dialog */}
       <Dialog open={!!openComments} onClose={() => setOpenComments(null)} fullWidth maxWidth="sm">
         <DialogTitle>Comments</DialogTitle>
         <DialogContent dividers>
@@ -671,20 +855,24 @@ export default function Home() {
         </DialogActions>
       </Dialog>
 
-      {/* Create Flashcard Dialog */}
       <Dialog open={openCreateFlashcard} onClose={() => setOpenCreateFlashcard(false)} fullWidth maxWidth="sm">
         <DialogTitle>Create Flashcard</DialogTitle>
         <DialogContent dividers>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Subject</InputLabel>
+            <Select value={fcSubject} onChange={(e) => setFcSubject(e.target.value)} label="Subject">
+              {SUBJECT_LIST.map((subj) => <MenuItem key={subj} value={subj}>{subj}</MenuItem>)}
+            </Select>
+          </FormControl>
           <TextField fullWidth label="Front (Question)" multiline rows={2} value={fcFront} onChange={(e) => setFcFront(e.target.value)} sx={{ mb: 2 }} />
           <TextField fullWidth label="Back (Answer)" multiline rows={2} value={fcBack} onChange={(e) => setFcBack(e.target.value)} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenCreateFlashcard(false)}>Cancel</Button>
-          <Button variant="contained" onClick={addFlashcard} disabled={!fcFront.trim() || !fcBack.trim()} sx={{ bgcolor: '#1A73E8', textTransform: 'none' }}>Save Flashcard</Button>
+          <Button variant="contained" onClick={addFlashcard} disabled={!fcFront.trim() || !fcBack.trim() || !fcSubject} sx={{ bgcolor: '#1A73E8', textTransform: 'none' }}>Save Flashcard</Button>
         </DialogActions>
       </Dialog>
 
-      {/* Announcement Dialog */}
       <Dialog open={openAnnouncement} onClose={() => setOpenAnnouncement(false)} fullWidth maxWidth="sm">
         <DialogTitle>Post Announcement</DialogTitle>
         <DialogContent dividers>
