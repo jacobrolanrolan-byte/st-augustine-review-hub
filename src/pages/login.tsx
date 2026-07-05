@@ -41,17 +41,10 @@ export default function Login() {
       <Card sx={{ p: 2, borderRadius: 6 }}>
         <CardContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
-            <Typography 
-              variant="h4" 
-              gutterBottom 
-              sx={{ fontWeight: 'bold', color: 'primary.main' }}
-            >
+            <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
               Sign In
             </Typography>
-            <Typography 
-              variant="body2" 
-              sx={{ color: 'text.secondary' }}
-            >
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               Use your credentials for St. Augustine Review Hub
             </Typography>
           </Box>
@@ -60,9 +53,28 @@ export default function Login() {
           {message && <Alert severity="success" sx={{ mb: 2, borderRadius: 3 }}>{message}</Alert>}
 
           <form onSubmit={handleSignIn}>
-            <TextField fullWidth label="Email address" variant="outlined" margin="normal" value={email} onChange={(e) => setEmail(e.target.value)} required sx={{ '& .MuiOutlinedInput-root': { borderRadius: 4 } }} />
-            <TextField fullWidth label="Password" type="password" variant="outlined" margin="normal" value={password} onChange={(e) => setPassword(e.target.value)} required sx={{ '& .MuiOutlinedInput-root': { borderRadius: 4 } }} />
-            
+            <TextField
+              fullWidth
+              label="Email address"
+              variant="outlined"
+              margin="normal"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 4 } }}
+            />
+            <TextField
+              fullWidth
+              label="Password"
+              type="password"
+              variant="outlined"
+              margin="normal"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 4 } }}
+            />
+
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 3 }}>
               <Button type="submit" variant="contained" size="large" fullWidth sx={{ borderRadius: 6, bgcolor: '#1A73E8' }}>
                 Log In
