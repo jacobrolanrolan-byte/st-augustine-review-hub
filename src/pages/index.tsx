@@ -173,7 +173,7 @@ export default function Home() {
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, display: { xs: 'none', md: 'flex' } }}>
+            <Box sx={{ alignItems: 'center', gap: 1.5, display: { xs: 'none', md: 'flex' } }}>
               <AccountCircleIcon sx={{ color: '#5F6368' }} />
               <Box>
                 <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1 }}>{user.email}</Typography>
@@ -212,7 +212,10 @@ export default function Home() {
                 sx={{ borderRadius: '8px', mb: 0.5 }}
               >
                 <ListItemIcon><FolderIcon /></ListItemIcon>
-                <ListItemText primary="All Subjects Stream" primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 500 }} />
+                <ListItemText
+                  primary="All Subjects Stream"
+                  slotProps={{ primary: { sx: { fontSize: '0.9rem', fontWeight: 500 } } }}
+                />
               </ListItemButton>
             </ListItem>
             {SUBJECT_LIST.map((subj) => (
@@ -223,7 +226,10 @@ export default function Home() {
                   sx={{ borderRadius: '8px', mb: 0.5 }}
                 >
                   <ListItemIcon><FolderIcon /></ListItemIcon>
-                  <ListItemText primary={subj} primaryTypographyProps={{ fontSize: '0.9rem' }} />
+                  <ListItemText
+                    primary={subj}
+                    slotProps={{ primary: { sx: { fontSize: '0.9rem' } } }}
+                  />
                 </ListItemButton>
               </ListItem>
             ))}
@@ -242,13 +248,15 @@ export default function Home() {
                   size="small"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon sx={{ color: '#5F6368' }} />
-                      </InputAdornment>
-                    ),
-                    sx: { borderRadius: '8px', bgcolor: '#FFFFFF' }
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon sx={{ color: '#5F6368' }} />
+                        </InputAdornment>
+                      ),
+                      sx: { borderRadius: '8px', bgcolor: '#FFFFFF' }
+                    }
                   }}
                 />
               </Box>
@@ -268,7 +276,7 @@ export default function Home() {
               )}
             </Box>
 
-            <Box mb={3}>
+            <Box sx={{ mb: 3 }}>
               <Typography variant="h5" sx={{ fontWeight: 600 }}>
                 {selectedSubject || "All Subjects Stream"}
               </Typography>
@@ -287,7 +295,7 @@ export default function Home() {
             ) : (
               <Grid container spacing={3}>
                 {filteredMaterials.map((item) => (
-                  <Grid item xs={12} sm={6} md={4} key={item.id}>
+                  <Grid size={{ xs: 12, sm: 6, md: 4 }} key={item.id}>
                     <Card sx={{
                       height: '100%', display: 'flex', flexDirection: 'column',
                       bgcolor: '#FFFFFF', border: '1px solid #E0E0E0', borderRadius: '8px',
