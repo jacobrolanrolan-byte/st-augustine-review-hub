@@ -299,8 +299,8 @@ export default function Home() {
 
       {/* Announcements */}
       {(announcements.length > 0 || isAdmin) && (
-        <Box sx={{ px: { xs: 3, md: 4 }, pt: 3 }}>
-          {announcements.map((ann) => (
+  <Box sx={{ px: { xs: 3, md: 4 }, pt: 3 }}>
+    {announcements.map((ann) => (
             <Paper key={ann.id} sx={{ p: 2, mb: 2, bgcolor: 'warning.light', color: 'warning.contrastText', borderRadius: '8px' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                 <CampaignIcon fontSize="small" />
