@@ -284,7 +284,7 @@ export default function Home() {
                 {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
               </IconButton>
             </Tooltip>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, display: { xs: 'none', md: 'flex' } }}>
+            <Box sx={{ alignItems: 'center', gap: 1.5, display: { xs: 'none', md: 'flex' } }}>
               <AccountCircleIcon sx={{ color: 'text.secondary' }} />
               <Box>
                 <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1 }}>{user.email}</Typography>
