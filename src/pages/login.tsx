@@ -22,7 +22,6 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setMessage('');
-    
     if (password.length < 6) {
       setError("Password must be at least 6 characters long.");
       return;
@@ -41,10 +40,14 @@ export default function Login() {
     <Container maxWidth="sm" sx={{ mt: 8 }}>
       <Card sx={{ p: 2, borderRadius: 6 }}>
         <CardContent>
-          <Box display="flex" flexDirection="column" alignItems="center" mb={3}>
-            <Typography variant="h4" fontWeight="bold" color="primary" gutterBottom>
-              Sign In
-            </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
+            <Typography 
+  variant="h4" 
+  gutterBottom 
+  sx={{ fontWeight: 'bold', color: 'primary.main' }}
+>
+  Sign In
+</Typography>
             <Typography variant="body2" color="text.secondary">
               Use your credentials for St. Augustine Review Hub
             </Typography>
@@ -57,7 +60,7 @@ export default function Login() {
             <TextField fullWidth label="Email address" variant="outlined" margin="normal" value={email} onChange={(e) => setEmail(e.target.value)} required sx={{ '& .MuiOutlinedInput-root': { borderRadius: 4 } }} />
             <TextField fullWidth label="Password" type="password" variant="outlined" margin="normal" value={password} onChange={(e) => setPassword(e.target.value)} required sx={{ '& .MuiOutlinedInput-root': { borderRadius: 4 } }} />
             
-            <Box display="flex" flexDirection="column" gap={2} mt={3}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 3 }}>
               <Button type="submit" variant="contained" size="large" fullWidth sx={{ borderRadius: 6, bgcolor: '#1A73E8' }}>
                 Log In
               </Button>
