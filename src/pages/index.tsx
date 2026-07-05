@@ -153,26 +153,20 @@ export default function Home() {
     <Box sx={{ bgcolor: '#F8F9FA', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       
       {/* Top Application Header */}
-<Box sx={{ bgcolor: '#FFFFFF', borderBottom: '1px solid #E0E0E0', px: 3, py: 1.5 }}>
-  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-      <Box sx={{ bgcolor: '#1A73E8', color: '#FFFFFF', p: 1, borderRadius: '8px', display: 'flex' }}>
-        <SchoolIcon />
-      </Box>
-
-          <Box display="flex" alignItems="center" gap={3}>
-            <Box display="flex" alignItems="center" gap={1.5} sx={{ display: { xs: 'none', md: 'flex' } }}>
-              <AccountCircleIcon sx={{ color: '#5F6368' }} />
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1 }}>{user.email}</Typography>
-                <Typography variant="caption" sx={{ color: '#70757A' }}>{isAdmin ? 'Class Officer' : 'Student'}</Typography>
-              </Box>
-            </Box>
-            <Divider orientation="vertical" flexItem />
-            <Button variant="outlined" onClick={() => signOut()} sx={{ textTransform: 'none', borderColor: '#DADCE0', color: '#3C4043' }}>Sign Out</Button>
-          </Box>
+return (
+    <Box sx={{ bgcolor: '#F8F9FA', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      
+      {/* Top Application Header */}
+      <Box sx={{ bgcolor: '#FFFFFF', borderBottom: '1px solid #E0E0E0', px: 3, py: 1.5 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* ... your header content ... */}
         </Box>
-      </Box>
+      </Box> {/* <--- Ensure this closing tag exists for the header Box */}
+
+      {/* ... the rest of your page content ... */}
+      
+    </Box> // <--- This is the closing tag for the main container that started on line 153
+  );
 
       {/* Main Structural Columns */}
       <Box sx={{ display: 'flex', flexGrow: 1 }}>
