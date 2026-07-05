@@ -98,16 +98,20 @@ export default function Home() {
           <TextField fullWidth placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           {isAdmin && <Button sx={{ mt: 2 }} variant="contained" onClick={() => setOpenAdminModal(true)}>Upload</Button>}
           <Grid container spacing={3} sx={{ mt: 2 }}>
-            {filteredMaterials.map((item) => (
-              <Grid item xs={12} sm={6} md={4} key={item.id}>
-                <Card sx={{ p: 2 }}>
-                  <Typography variant="h6">{item.title}</Typography>
-                  <Button href={item.download_url} target="_blank">View</Button>
-                  {isAdmin && <IconButton color="error" onClick={() => handleDeleteMaterial(item.id, item.download_url)}><DeleteIcon /></IconButton>}
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
+  {filteredMaterials.map((item) => (
+    <Grid size={{ xs: 12, sm: 6, md: 4 }} key={item.id}> 
+      <Card sx={{ p: 2 }}>
+        <Typography variant="h6">{item.title}</Typography>
+        <Button href={item.download_url} target="_blank">View</Button>
+        {isAdmin && (
+          <IconButton color="error" onClick={() => handleDeleteMaterial(item.id, item.download_url)}>
+            <DeleteIcon />
+          </IconButton>
+        )}
+      </Card>
+    </Grid>
+  ))}
+</Grid>
         </Box>
       </Box>
     </Box>
